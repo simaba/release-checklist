@@ -1,0 +1,11 @@
+feature_name: IVI assistant
+risk_tier: medium
+checks:
+  intended_operating_conditions: true
+  known_limitations: true
+  uncertainty_handling: true
+  degraded_mode_validated: true
+  monitoring_defined: true
+  escalation_path_defined: true
+  monitoring_owner_named: true
+  post_release_review_plan: true
