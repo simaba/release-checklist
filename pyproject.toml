@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-release-checklist"
-version = "0.1.0"
+name = "release-checklist"
+version = "0.1.1"
 description = "A CLI tool for validating AI/ML system release readiness in regulated industries"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -12,8 +12,14 @@ authors = [
     { name = "Sima Bagheri", email = "bagherisima@gmail.com" }
 ]
 keywords = [
-    "ai-governance", "release-readiness", "mlops", "responsible-ai",
-    "nist-ai-rmf", "regulated-industries", "machine-learning", "llm-governance"
+    "ai-governance",
+    "release-readiness",
+    "mlops",
+    "responsible-ai",
+    "nist-ai-rmf",
+    "regulated-industries",
+    "machine-learning",
+    "llm-governance",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -30,19 +36,28 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "click>=8.0",
     "pyyaml>=6.0",
     "rich>=13.0",
-    "click>=8.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/simaba/ai-release-readiness-checklist"
-Documentation = "https://simaba.github.io/ai-release-readiness-checklist"
-Repository = "https://github.com/simaba/ai-release-readiness-checklist"
-"Bug Tracker" = "https://github.com/simaba/ai-release-readiness-checklist/issues"
+Homepage = "https://github.com/simaba/release-checklist"
+Repository = "https://github.com/simaba/release-checklist"
+"Bug Tracker" = "https://github.com/simaba/release-checklist/issues"
 
 [project.scripts]
-airc = "airc.cli:main"
+release-checklist = "airc.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.0",
+    "flake8>=7.0",
+    "pytest>=8.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,18 +1,18 @@
 # AI Release Readiness Checklist
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/simaba/release-checklist)](https://github.com/simaba/release-checklist/commits/main)
 
-A practical, risk-tiered checklist framework for evaluating AI release readiness — with a lightweight CLI evaluation tool.
+A practical, risk-tiered checklist framework for evaluating AI release readiness, with a packaged CLI validator for local use and CI pipelines.
 
-AI systems need release readiness checks that go beyond ordinary software quality gates: model behaviour, fallback paths, observability, and accountability all require explicit verification.
+AI systems need release readiness checks that go beyond ordinary software quality gates. Model behaviour, fallback paths, observability, and accountability all require explicit verification.
 
 ---
 
 ## How it works
 
-Three risk tiers — choose based on safety impact, regulatory exposure, and reversibility:
+Three risk tiers, chosen based on safety impact, regulatory exposure, and reversibility:
 
 | Tier | Use when |
 |------|---------|
@@ -29,32 +29,49 @@ Higher tiers include all requirements from lower tiers, plus additional items.
 ```bash
 git clone https://github.com/simaba/release-checklist.git
 cd release-checklist
-pip install -r requirements.txt
+python -m pip install -e .
+```
 
-# Evaluate against a medium-risk configuration
-python src/check_release.py configs/medium-risk-example.yaml
+Validate an example configuration:
+
+```bash
+release-checklist validate configs/medium-risk-example.yaml
+```
+
+Generate a report:
+
+```bash
+release-checklist report configs/medium-risk-example.yaml --format markdown
+```
+
+Create a starter template:
+
+```bash
+release-checklist init --industry healthcare
+```
+
+Legacy direct execution is still supported for local source checkouts:
+
+```bash
+python src/check_release.py validate configs/medium-risk-example.yaml
+```
+
+Install development dependencies:
+
+```bash
+python -m pip install -e ".[dev]"
 ```
 
 **Example output:**
-```
-AI Release Readiness Evaluation
-================================
-Risk tier: medium  |  Checking 24 items...
-
-  ✓ Model evaluation completed on held-out test set
-  ✓ Baseline performance documented
-  ✓ Fallback behaviour defined and tested
-  ✗ Bias and fairness assessment not completed
-  ...
-
-Result: NOT READY — 3 items require attention
+```text
+✅ Release readiness check PASSED
 ```
 
 ---
 
 ## Repository structure
 
-```
+```text
 checklists/
   low-risk.md               # Checklist for low-risk AI features
   medium-risk.md            # Checklist for medium-risk AI features
@@ -63,25 +80,32 @@ configs/
   medium-risk-example.yaml  # Example YAML configuration
   high-risk-example.yaml    # Example YAML configuration
 src/
-  check_release.py          # CLI evaluation tool
+  airc/
+    cli.py                  # Packaged CLI entry point
+    validator.py            # Core validation logic
+    report.py               # Text / JSON / Markdown reporting
+  check_release.py          # Legacy compatibility wrapper
+tests/
+  test_validator.py
 requirements.txt
+pyproject.toml
 ```
 
 ---
 
 ## Customising for your team
 
-1. Fork the repository
-2. Edit the checklist `.md` files to match your organisation's requirements
-3. Update the YAML configs to reflect your feature's risk profile
-4. Run `check_release.py` as part of your release pipeline
+1. Fork the repository.
+2. Edit the checklist `.md` files to match your organisation's requirements.
+3. Update the YAML configs to reflect your feature's risk profile.
+4. Run `release-checklist validate` as part of your release pipeline.
 
 ---
 
 ## Companion repositories
 
-- **[AI Release Governance Framework](https://github.com/simaba/release-governance)** — the broader framework this checklist operationalises
-- **[Enterprise AI Governance Playbook](https://github.com/simaba/governance-playbook)** — where this checklist fits in the full operating lifecycle
+- **[AI Release Governance Framework](https://github.com/simaba/release-governance)** for the broader framework this checklist operationalises.
+- **[Enterprise AI Governance Playbook](https://github.com/simaba/governance-playbook)** for where this checklist fits in the full operating lifecycle.
 
 ---
 
@@ -103,4 +127,4 @@ This repository is part of a connected toolkit for responsible AI operations:
 
 ---
 
-*Shared in a personal capacity. Open to collaborations and feedback — connect on [LinkedIn](https://linkedin.com/in/simaba) or [Medium](https://medium.com/@bagheri.sima).*
+*Shared in a personal capacity. Open to collaborations and feedback. Connect on [LinkedIn](https://linkedin.com/in/simaba) or [Medium](https://medium.com/@bagheri.sima).*
