@@ -1,13 +1,46 @@
-feature_name: ADAS intervention feature
-risk_tier: high
-checks:
-  intended_operating_conditions: true
-  known_limitations: true
-  uncertainty_handling: true
-  degraded_mode_validated: false
-  monitoring_defined: true
-  human_override_operational: true
-  incident_response_playbook: false
-  rollback_tested: false
-  accountable_approver_named: false
-  post_release_review_plan: true
+metadata:
+  project: "ADAS intervention feature"
+  version: "1.0.0"
+  environment: "pre-production"
+  regulated_industry: "general"
+  risk_classification: "high"
+  deployment_date: null
+  deployment_owner: "Safety + Engineering"
+
+model_validation:
+  performance:
+    accuracy_threshold: 0.97
+    bias_evaluation_complete: true
+    adversarial_testing_complete: true
+  fairness:
+    disparate_impact_ratio: 0.85
+    subgroup_performance_review: true
+
+governance:
+  documentation:
+    model_card_complete: true
+    risk_assessment_complete: true
+    explainability_report_complete: true
+  approvals:
+    technical_review: true
+    ai_governance_review: true
+    legal_review: true
+    security_review: true
+  regulatory: {}
+
+infrastructure:
+  testing:
+    unit_tests_passing: true
+    integration_tests_passing: true
+    security_scan_passed: true
+    load_test_passed: true
+  monitoring:
+    alerting_configured: true
+    drift_detection_enabled: true
+  rollback:
+    rollback_plan_documented: true
+    rollback_tested: false
+
+incident_readiness:
+  runbook_complete: false
+  escalation_contacts_defined: true
