@@ -10,9 +10,18 @@ AI systems need release readiness checks that go beyond ordinary software qualit
 
 ---
 
+## What this repository provides
+
+- A packaged `release-checklist` CLI for validating YAML-based release gate configurations
+- Starter templates generated with `release-checklist init`
+- Example configurations for medium-risk and high-risk AI systems
+- A validation model aligned to technical, governance, infrastructure, and incident-readiness checks
+
+---
+
 ## How it works
 
-Three risk tiers, chosen based on safety impact, regulatory exposure, and reversibility:
+Three risk tiers are supported, chosen based on safety impact, regulatory exposure, and reversibility:
 
 | Tier | Use when |
 |------|---------|
@@ -20,7 +29,15 @@ Three risk tiers, chosen based on safety impact, regulatory exposure, and revers
 | **Medium risk** | Customer-facing, some regulatory context, limited fallback |
 | **High risk** | Safety-critical, regulated environment, hard to reverse |
 
-Higher tiers include all requirements from lower tiers, plus additional items.
+Higher tiers inherit the required gates from lower tiers and add stricter requirements.
+
+The validator expects a nested YAML structure with these top-level sections:
+
+- `metadata`
+- `model_validation`
+- `governance`
+- `infrastructure`
+- optional but supported: `incident_readiness`
 
 ---
 
@@ -32,7 +49,7 @@ cd release-checklist
 python -m pip install -e .
 ```
 
-Validate an example configuration:
+Validate a working example configuration:
 
 ```bash
 release-checklist validate configs/medium-risk-example.yaml
@@ -69,13 +86,41 @@ python -m pip install -e ".[dev]"
 
 ---
 
+## Example configuration shape
+
+```yaml
+metadata:
+  project: "IVI assistant"
+  version: "1.0.0"
+  environment: "staging"
+  regulated_industry: "general"
+  risk_classification: "medium"
+
+model_validation:
+  performance:
+    accuracy_threshold: 0.90
+    bias_evaluation_complete: true
+
+governance:
+  documentation:
+    risk_assessment_complete: true
+  approvals:
+    technical_review: true
+
+infrastructure:
+  testing:
+    unit_tests_passing: true
+  rollback:
+    rollback_plan_documented: true
+```
+
+Use `release-checklist init` when starting from scratch so your file structure stays aligned to the validator.
+
+---
+
 ## Repository structure
 
 ```text
-checklists/
-  low-risk.md               # Checklist for low-risk AI features
-  medium-risk.md            # Checklist for medium-risk AI features
-  high-risk.md              # Checklist for high-risk AI features
 configs/
   medium-risk-example.yaml  # Example YAML configuration
   high-risk-example.yaml    # Example YAML configuration
@@ -84,6 +129,7 @@ src/
     cli.py                  # Packaged CLI entry point
     validator.py            # Core validation logic
     report.py               # Text / JSON / Markdown reporting
+    templates.py            # Template generation for `release-checklist init`
   check_release.py          # Legacy compatibility wrapper
 tests/
   test_validator.py
@@ -96,9 +142,9 @@ pyproject.toml
 ## Customising for your team
 
 1. Fork the repository.
-2. Edit the checklist `.md` files to match your organisation's requirements.
-3. Update the YAML configs to reflect your feature's risk profile.
-4. Run `release-checklist validate` as part of your release pipeline.
+2. Generate a baseline file with `release-checklist init`.
+3. Adjust the YAML values to match your industry, system risk, and internal approval model.
+4. Run `release-checklist validate` in CI before deployment.
 
 ---
 
