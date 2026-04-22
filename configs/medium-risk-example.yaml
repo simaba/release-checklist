@@ -9,12 +9,12 @@ metadata:
 
 model_validation:
   performance:
-    accuracy_threshold: 0.90
+    accuracy_threshold: 0.92
     bias_evaluation_complete: true
     adversarial_testing_complete: false
   fairness:
-    disparate_impact_ratio: 0.80
-    subgroup_performance_review: false
+    disparate_impact_ratio: 0.84
+    subgroup_performance_review: true
 
 governance:
   documentation:
@@ -33,10 +33,10 @@ infrastructure:
     unit_tests_passing: true
     integration_tests_passing: true
     security_scan_passed: false
-    load_test_passed: false
+    load_test_passed: true
   monitoring:
     alerting_configured: true
-    drift_detection_enabled: false
+    drift_detection_enabled: true
   rollback:
     rollback_plan_documented: true
     rollback_tested: false
