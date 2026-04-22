@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import re
 
 import yaml
 
@@ -56,6 +57,40 @@ INDUSTRY_EXTRA_GATES = {
     "government": ["governance.approvals.legal_review"],
 }
 
+ALLOWED_ENVIRONMENTS = {"dev", "test", "staging", "production"}
+ALLOWED_INDUSTRIES = {"general", "healthcare", "finance", "insurance", "government"}
+SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9._-]+)?$")
+
+BOOLEAN_GATE_PATHS = {
+    "model_validation.performance.bias_evaluation_complete",
+    "model_validation.performance.adversarial_testing_complete",
+    "model_validation.fairness.subgroup_performance_review",
+    "governance.documentation.model_card_complete",
+    "governance.documentation.risk_assessment_complete",
+    "governance.documentation.explainability_report_complete",
+    "governance.approvals.technical_review",
+    "governance.approvals.ai_governance_review",
+    "governance.approvals.legal_review",
+    "governance.approvals.security_review",
+    "governance.regulatory.hipaa_assessment_complete",
+    "governance.regulatory.sr_11_7_compliance",
+    "infrastructure.testing.unit_tests_passing",
+    "infrastructure.testing.integration_tests_passing",
+    "infrastructure.testing.security_scan_passed",
+    "infrastructure.testing.load_test_passed",
+    "infrastructure.monitoring.alerting_configured",
+    "infrastructure.monitoring.drift_detection_enabled",
+    "infrastructure.rollback.rollback_plan_documented",
+    "infrastructure.rollback.rollback_tested",
+    "incident_readiness.runbook_complete",
+    "incident_readiness.escalation_contacts_defined",
+}
+
+NUMERIC_BOUNDED_RULES: dict[str, tuple[float, float]] = {
+    "model_validation.performance.accuracy_threshold": (0.0, 1.0),
+    "model_validation.fairness.disparate_impact_ratio": (0.0, 10.0),
+}
+
 
 def _get_nested(d: dict[str, Any], key_path: str, default: Any = None) -> Any:
     """Traverse a nested mapping using a dot-separated key path."""
@@ -84,6 +119,46 @@ def _is_gate_satisfied(value: Any) -> bool:
     if isinstance(value, bool):
         return value is True
     return value not in (None, "")
+
+
+def _ensure_string(value: Any, field_name: str) -> str:
+    """Validate that a metadata field is a non-empty string."""
+    if not isinstance(value, str) or not value.strip():
+        raise ChecklistValidationError(f"metadata.{field_name} must be a non-empty string")
+    return value.strip()
+
+
+def _ensure_semver(value: str) -> None:
+    """Validate a loose semver-like version string."""
+    if not SEMVER_PATTERN.match(value):
+        raise ChecklistValidationError(
+            "metadata.version must look like a semantic version such as 1.0.0"
+        )
+
+
+def _ensure_allowed(value: str, field_name: str, allowed: set[str]) -> str:
+    """Validate a normalized metadata field against an allow-list."""
+    normalized = value.lower()
+    if normalized not in allowed:
+        expected = ", ".join(sorted(allowed))
+        raise ChecklistValidationError(
+            f"metadata.{field_name} must be one of: {expected}"
+        )
+    return normalized
+
+
+def _validate_leaf_value(path: str, value: Any) -> None:
+    """Validate known leaf paths when they are present in the YAML."""
+    if path in BOOLEAN_GATE_PATHS and not isinstance(value, bool):
+        raise ChecklistValidationError(f"{path} must be a boolean")
+
+    bounds = NUMERIC_BOUNDED_RULES.get(path)
+    if bounds is not None:
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            raise ChecklistValidationError(f"{path} must be a number")
+        low, high = bounds
+        if not low <= float(value) <= high:
+            raise ChecklistValidationError(f"{path} must be between {low} and {high}")
 
 
 @dataclass
@@ -148,26 +223,48 @@ def validate_checklist(
         )
 
     metadata = config.get("metadata", {})
-    missing_metadata = [field for field in REQUIRED_METADATA if not metadata.get(field)]
+    missing_metadata = [field for field in REQUIRED_METADATA if field not in metadata]
     if missing_metadata:
         raise ChecklistValidationError(
             f"Missing required metadata fields: {', '.join(missing_metadata)}"
         )
 
-    risk = str(metadata["risk_classification"]).lower()
-    if risk not in REQUIRED_GATES_BY_RISK:
-        allowed = ", ".join(sorted(REQUIRED_GATES_BY_RISK))
-        raise ChecklistValidationError(
-            f"Unsupported risk_classification '{metadata['risk_classification']}'. "
-            f"Expected one of: {allowed}"
-        )
+    project = _ensure_string(metadata.get("project"), "project")
+    version = _ensure_string(metadata.get("version"), "version")
+    _ensure_semver(version)
+    environment = _ensure_allowed(
+        _ensure_string(metadata.get("environment"), "environment"),
+        "environment",
+        ALLOWED_ENVIRONMENTS,
+    )
+    regulated_industry = _ensure_allowed(
+        _ensure_string(metadata.get("regulated_industry"), "regulated_industry"),
+        "regulated_industry",
+        ALLOWED_INDUSTRIES,
+    )
+    risk = _ensure_allowed(
+        _ensure_string(metadata.get("risk_classification"), "risk_classification"),
+        "risk_classification",
+        set(REQUIRED_GATES_BY_RISK),
+    )
 
-    industry = str(industry_override or metadata["regulated_industry"]).lower()
+    collected_paths: set[str] = set()
+    for section_name in REQUIRED_SECTIONS + ["incident_readiness"]:
+        section_value = config.get(section_name)
+        if isinstance(section_value, dict):
+            section_paths = _collect_paths(section_value, section_name)
+            collected_paths.update(section_paths)
+            for path in section_paths:
+                _validate_leaf_value(path, _get_nested(config, path))
+
+    industry = regulated_industry
+    if industry_override is not None:
+        industry = _ensure_allowed(industry_override, "regulated_industry", ALLOWED_INDUSTRIES)
 
     result = ValidationResult(
-        project=str(metadata["project"]),
-        version=str(metadata["version"]),
-        environment=str(metadata["environment"]),
+        project=project,
+        version=version,
+        environment=environment,
         risk_classification=risk,
         regulated_industry=industry,
         strict=strict,
@@ -175,12 +272,6 @@ def validate_checklist(
 
     required_gates = set(REQUIRED_GATES_BY_RISK[risk])
     required_gates.update(INDUSTRY_EXTRA_GATES.get(industry, []))
-
-    collected_paths: set[str] = set()
-    for section_name in REQUIRED_SECTIONS + ["incident_readiness"]:
-        section_value = config.get(section_name)
-        if isinstance(section_value, dict):
-            collected_paths.update(_collect_paths(section_value, section_name))
 
     gate_paths = sorted(collected_paths | required_gates)
 
