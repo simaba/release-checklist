@@ -21,8 +21,9 @@ This repo is intentionally narrower than:
 - a packaged `release-checklist` CLI for validating YAML-based release gate configurations
 - starter templates generated with `release-checklist init`
 - example configurations for medium-risk and high-risk AI systems
-- typed validation for known metadata fields, boolean gates, and bounded numeric values
+- typed validation for known metadata fields, boolean gates, bounded numeric values, and expected mapping shapes
 - text, JSON, and Markdown reporting for local use and CI pipelines
+- GitHub Actions CI covering supported Python versions and packaged CLI behavior
 
 ## How it works
 
@@ -43,6 +44,8 @@ The validator expects a nested YAML structure with these top-level sections:
 - `governance`
 - `infrastructure`
 - optional but supported: `incident_readiness`
+
+Known nested sections such as `model_validation.performance`, `governance.approvals`, and `infrastructure.testing` are expected to be mappings rather than free-form lists or strings.
 
 ## Quick start
 
@@ -118,8 +121,10 @@ The validator currently enforces:
 - required metadata fields
 - allow-listed values for environment, industry, and risk tier
 - semver-like version formatting such as `1.0.0`
+- mapping/object shape checks for known structural sections
 - boolean typing for known gates
 - bounded numeric validation for known fields such as `accuracy_threshold`
+- positive numeric validation for known monitoring fields such as `latency_ms`
 
 This repository is meant to be useful in real workflows, but it is still a lightweight validator rather than a full policy engine.
 
@@ -140,6 +145,7 @@ tests/
   test_validator.py
 requirements.txt
 pyproject.toml
+.github/workflows/ci.yml
 ```
 
 ## Related repositories
