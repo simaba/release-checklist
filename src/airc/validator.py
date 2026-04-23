@@ -61,6 +61,22 @@ ALLOWED_ENVIRONMENTS = {"development", "dev", "test", "staging", "production", "
 ALLOWED_INDUSTRIES = {"general", "healthcare", "finance", "insurance", "government"}
 SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9._-]+)?$")
 
+EXPECTED_MAPPING_PATHS = {
+    "metadata",
+    "model_validation",
+    "model_validation.performance",
+    "model_validation.fairness",
+    "governance",
+    "governance.documentation",
+    "governance.approvals",
+    "governance.regulatory",
+    "infrastructure",
+    "infrastructure.testing",
+    "infrastructure.monitoring",
+    "infrastructure.rollback",
+    "incident_readiness",
+}
+
 BOOLEAN_GATE_PATHS = {
     "model_validation.performance.bias_evaluation_complete",
     "model_validation.performance.adversarial_testing_complete",
@@ -157,6 +173,16 @@ def _ensure_allowed(value: str, field_name: str, allowed: set[str]) -> str:
     return normalized
 
 
+def _validate_mapping_shapes(config: dict[str, Any]) -> None:
+    """Validate that known structural paths are mappings when present."""
+    for path in sorted(EXPECTED_MAPPING_PATHS):
+        value = _get_nested(config, path)
+        if value is None:
+            continue
+        if not isinstance(value, dict):
+            raise ChecklistValidationError(f"{path} must be a mapping/object")
+
+
 def _validate_leaf_value(path: str, value: Any) -> None:
     """Validate known leaf paths when they are present in the YAML."""
     if path in BOOLEAN_GATE_PATHS and not isinstance(value, bool):
@@ -240,6 +266,8 @@ def validate_checklist(
         raise ChecklistValidationError(
             f"Missing required sections: {', '.join(missing_sections)}"
         )
+
+    _validate_mapping_shapes(config)
 
     metadata = config.get("metadata", {})
     missing_metadata = [field for field in REQUIRED_METADATA if field not in metadata]
