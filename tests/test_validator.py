@@ -54,6 +54,25 @@ def test_missing_required_section_raises(config_file):
         validate_checklist(path)
 
 
+def test_required_section_must_be_mapping(config_file):
+    bad = deepcopy(MINIMAL_CONFIG)
+    bad["governance"] = []
+    path = config_file(bad)
+    with pytest.raises(ChecklistValidationError, match="governance must be a mapping/object"):
+        validate_checklist(path)
+
+
+def test_nested_section_must_be_mapping(config_file):
+    bad = deepcopy(MINIMAL_CONFIG)
+    bad["model_validation"]["performance"] = []
+    path = config_file(bad)
+    with pytest.raises(
+        ChecklistValidationError,
+        match="model_validation.performance must be a mapping/object",
+    ):
+        validate_checklist(path)
+
+
 def test_missing_required_metadata_raises(config_file):
     bad = deepcopy(MINIMAL_CONFIG)
     del bad["metadata"]["project"]
