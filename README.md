@@ -16,6 +16,10 @@ This repo is intentionally narrower than:
 - [`governance-playbook`](https://github.com/simaba/governance-playbook), which covers the wider AI operating model
 - [`regulated-ai`](https://github.com/simaba/regulated-ai), which is a starter template repo
 
+## Maturity
+
+This is an **alpha working tool**. It is useful for demos, internal experiments, governance prototyping, and CI-style validation of example release-readiness files. It is not a full policy engine, compliance product, or safety certification tool.
+
 ## What this repository provides
 
 - a packaged `release-checklist` CLI for validating YAML-based release gate configurations
@@ -24,6 +28,10 @@ This repo is intentionally narrower than:
 - typed validation for known metadata fields, boolean gates, bounded numeric values, and expected mapping shapes
 - text, JSON, and Markdown reporting for local use and CI pipelines
 - GitHub Actions CI covering supported Python versions and packaged CLI behavior
+
+## Naming note
+
+The command-line tool is installed as `release-checklist`. The Python package namespace is currently `airc`, short for **AI Release Checklist**. This keeps the CLI name readable while keeping the internal package namespace concise.
 
 ## How it works
 
@@ -127,6 +135,12 @@ The validator currently enforces:
 - positive numeric validation for known monitoring fields such as `latency_ms`
 
 This repository is meant to be useful in real workflows, but it is still a lightweight validator rather than a full policy engine.
+
+## Scope and disclaimer
+
+This repository is shared in a personal capacity. It is not legal advice, compliance certification, regulatory approval, safety certification, or official guidance from NIST, the EU, ISO, or any employer.
+
+References to risk tiers, release gates, NIST AI RMF, EU AI Act, or industry obligations are practitioner mappings and examples. Always verify against official sources before using this tool for compliance, safety, or release decisions.
 
 ## Repository structure
 
