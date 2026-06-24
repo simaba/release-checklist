@@ -16,14 +16,7 @@ class ChecklistValidationError(Exception):
 
 REQUIRED_SECTIONS = ["metadata", "model_validation", "governance", "infrastructure"]
 VALIDATION_SECTIONS = ["model_validation", "governance", "infrastructure", "incident_readiness"]
-
-REQUIRED_METADATA = [
-    "project",
-    "version",
-    "environment",
-    "regulated_industry",
-    "risk_classification",
-]
+REQUIRED_METADATA = ["project", "version", "environment", "regulated_industry", "risk_classification"]
 
 REQUIRED_GATES_BY_RISK = {
     "high": [
@@ -103,6 +96,8 @@ BOOLEAN_GATE_PATHS = {
     "incident_readiness.escalation_contacts_defined",
 }
 
+# Status strings are supported for imported evidence, but only an explicit "pass" satisfies a gate.
+GATE_STATUS_VALUES = {"pass", "fail", "evidence_pending", "not_applicable"}
 NUMERIC_BOUNDED_RULES: dict[str, tuple[float, float]] = {
     "model_validation.performance.accuracy_threshold": (0.0, 1.0),
     "model_validation.performance.precision_threshold": (0.0, 1.0),
@@ -110,7 +105,6 @@ NUMERIC_BOUNDED_RULES: dict[str, tuple[float, float]] = {
     "model_validation.performance.f1_threshold": (0.0, 1.0),
     "model_validation.fairness.disparate_impact_ratio": (0.0, 10.0),
 }
-
 POSITIVE_NUMERIC_PATHS = {
     "infrastructure.monitoring.latency_ms",
     "infrastructure.monitoring.timeout_seconds",
@@ -119,9 +113,8 @@ POSITIVE_NUMERIC_PATHS = {
 }
 
 
-def _get_nested(d: dict[str, Any], key_path: str, default: Any = None) -> Any:
-    """Traverse a nested mapping using a dot-separated key path."""
-    value: Any = d
+def _get_nested(mapping: dict[str, Any], key_path: str, default: Any = None) -> Any:
+    value: Any = mapping
     for key in key_path.split("."):
         if not isinstance(value, dict):
             return default
@@ -129,10 +122,9 @@ def _get_nested(d: dict[str, Any], key_path: str, default: Any = None) -> Any:
     return value
 
 
-def _collect_paths(d: dict[str, Any], prefix: str = "") -> list[str]:
-    """Collect leaf paths from a nested mapping."""
+def _collect_paths(mapping: dict[str, Any], prefix: str = "") -> list[str]:
     paths: list[str] = []
-    for key, value in d.items():
+    for key, value in mapping.items():
         path = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
             paths.extend(_collect_paths(value, path))
@@ -141,53 +133,44 @@ def _collect_paths(d: dict[str, Any], prefix: str = "") -> list[str]:
     return paths
 
 
-def _is_gate_satisfied(value: Any) -> bool:
-    """Return whether a gate value should be treated as satisfied."""
-    if isinstance(value, bool):
-        return value is True
-    return value not in (None, "")
-
-
 def _ensure_string(value: Any, field_name: str) -> str:
-    """Validate that a metadata field is a non-empty string."""
     if not isinstance(value, str) or not value.strip():
         raise ChecklistValidationError(f"metadata.{field_name} must be a non-empty string")
     return value.strip()
 
 
 def _ensure_semver(value: str) -> None:
-    """Validate a loose semver-like version string."""
     if not SEMVER_PATTERN.match(value):
-        raise ChecklistValidationError(
-            "metadata.version must look like a semantic version such as 1.0.0"
-        )
+        raise ChecklistValidationError("metadata.version must look like a semantic version such as 1.0.0")
 
 
 def _ensure_allowed(value: str, field_name: str, allowed: set[str]) -> str:
-    """Validate a normalized metadata field against an allow-list."""
     normalized = value.lower()
     if normalized not in allowed:
         expected = ", ".join(sorted(allowed))
-        raise ChecklistValidationError(
-            f"metadata.{field_name} must be one of: {expected}"
-        )
+        raise ChecklistValidationError(f"metadata.{field_name} must be one of: {expected}")
     return normalized
 
 
 def _validate_mapping_shapes(config: dict[str, Any]) -> None:
-    """Validate that known structural paths are mappings when present."""
     for path in sorted(EXPECTED_MAPPING_PATHS):
         value = _get_nested(config, path)
-        if value is None:
-            continue
-        if not isinstance(value, dict):
+        if value is not None and not isinstance(value, dict):
             raise ChecklistValidationError(f"{path} must be a mapping/object")
 
 
+def _validate_gate_value(path: str, value: Any) -> None:
+    if isinstance(value, bool):
+        return
+    if isinstance(value, str) and value.lower() in GATE_STATUS_VALUES:
+        return
+    expected = "a boolean or one of: " + ", ".join(sorted(GATE_STATUS_VALUES))
+    raise ChecklistValidationError(f"{path} must be {expected}")
+
+
 def _validate_leaf_value(path: str, value: Any) -> None:
-    """Validate known leaf paths when they are present in the YAML."""
-    if path in BOOLEAN_GATE_PATHS and not isinstance(value, bool):
-        raise ChecklistValidationError(f"{path} must be a boolean")
+    if path in BOOLEAN_GATE_PATHS:
+        _validate_gate_value(path, value)
 
     bounds = NUMERIC_BOUNDED_RULES.get(path)
     if bounds is not None:
@@ -205,6 +188,12 @@ def _validate_leaf_value(path: str, value: Any) -> None:
 
     if path.endswith("_threshold") and isinstance(value, str):
         raise ChecklistValidationError(f"{path} must be numeric, not free-form text")
+
+
+def _is_gate_satisfied(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return isinstance(value, str) and value.lower() == "pass"
 
 
 @dataclass
@@ -258,32 +247,23 @@ def validate_checklist(
         raise ChecklistValidationError(f"Invalid YAML in {config_path}: {exc}") from exc
 
     if not isinstance(config, dict):
-        raise ChecklistValidationError(
-            f"{config_path} does not contain a YAML mapping at the top level."
-        )
+        raise ChecklistValidationError(f"{config_path} does not contain a YAML mapping at the top level.")
 
     missing_sections = [section for section in REQUIRED_SECTIONS if section not in config]
     if missing_sections:
-        raise ChecklistValidationError(
-            f"Missing required sections: {', '.join(missing_sections)}"
-        )
+        raise ChecklistValidationError(f"Missing required sections: {', '.join(missing_sections)}")
 
     _validate_mapping_shapes(config)
-
     metadata = config.get("metadata", {})
     missing_metadata = [field for field in REQUIRED_METADATA if field not in metadata]
     if missing_metadata:
-        raise ChecklistValidationError(
-            f"Missing required metadata fields: {', '.join(missing_metadata)}"
-        )
+        raise ChecklistValidationError(f"Missing required metadata fields: {', '.join(missing_metadata)}")
 
     project = _ensure_string(metadata.get("project"), "project")
     version = _ensure_string(metadata.get("version"), "version")
     _ensure_semver(version)
     environment = _ensure_allowed(
-        _ensure_string(metadata.get("environment"), "environment"),
-        "environment",
-        ALLOWED_ENVIRONMENTS,
+        _ensure_string(metadata.get("environment"), "environment"), "environment", ALLOWED_ENVIRONMENTS
     )
     regulated_industry = _ensure_allowed(
         _ensure_string(metadata.get("regulated_industry"), "regulated_industry"),
@@ -300,14 +280,18 @@ def validate_checklist(
     for section_name in VALIDATION_SECTIONS:
         section_value = config.get(section_name)
         if isinstance(section_value, dict):
-            section_paths = _collect_paths(section_value, section_name)
-            collected_paths.update(section_paths)
-            for path in section_paths:
+            for path in _collect_paths(section_value, section_name):
+                collected_paths.add(path)
                 _validate_leaf_value(path, _get_nested(config, path))
 
     industry = regulated_industry
     if industry_override is not None:
         industry = _ensure_allowed(industry_override.strip(), "regulated_industry", ALLOWED_INDUSTRIES)
+
+    required_gates = set(REQUIRED_GATES_BY_RISK[risk])
+    required_gates.update(INDUSTRY_EXTRA_GATES.get(industry, []))
+    declared_gate_paths = {path for path in collected_paths if path in BOOLEAN_GATE_PATHS}
+    gate_paths = sorted(declared_gate_paths | required_gates)
 
     result = ValidationResult(
         project=project,
@@ -317,23 +301,14 @@ def validate_checklist(
         regulated_industry=industry,
         strict=strict,
     )
-
-    required_gates = set(REQUIRED_GATES_BY_RISK[risk])
-    required_gates.update(INDUSTRY_EXTRA_GATES.get(industry, []))
-
-    gate_paths = sorted(collected_paths | required_gates)
-
     for gate_path in gate_paths:
         value = _get_nested(config, gate_path)
-        is_required = gate_path in required_gates
-        passed = _is_gate_satisfied(value)
         result.gates.append(
             GateResult(
                 gate=gate_path,
                 value=value,
-                passed=passed,
-                required=is_required,
+                passed=_is_gate_satisfied(value),
+                required=gate_path in required_gates,
             )
         )
-
     return result
