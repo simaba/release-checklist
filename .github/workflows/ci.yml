@@ -29,7 +29,17 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run linting
-        run: flake8 src/airc --max-line-length=120 --ignore=E501,W503
+        run: |
+          set -o pipefail
+          flake8 src/airc --max-line-length=120 --ignore=E501,W503 | tee flake8-report.txt
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake8-${{ matrix.python-version }}
+          path: flake8-report.txt
+          if-no-files-found: ignore
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
