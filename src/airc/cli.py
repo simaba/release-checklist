@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import click
 
@@ -34,7 +35,7 @@ def main() -> None:
     "--strict",
     is_flag=True,
     default=False,
-    help="Fail if optional boolean gates are not explicitly set to true.",
+    help="Fail if declared optional gates are not explicitly satisfied.",
 )
 @click.option(
     "--output",
@@ -44,14 +45,25 @@ def main() -> None:
 )
 @click.option(
     "--industry",
-    type=click.Choice(["healthcare", "finance", "insurance", "government", "general"]),
+    type=click.Choice(
+        ["healthcare", "finance", "insurance", "government", "general"]
+    ),
     default=None,
     help="Override industry-specific gate requirements.",
 )
-def validate(config_path: Path, strict: bool, output: str, industry: str | None) -> None:
+def validate(
+    config_path: Path,
+    strict: bool,
+    output: str,
+    industry: Optional[str],
+) -> None:
     """Validate a release readiness configuration file."""
     try:
-        result = validate_checklist(config_path, strict=strict, industry_override=industry)
+        result = validate_checklist(
+            config_path,
+            strict=strict,
+            industry_override=industry,
+        )
         render_report(result, output_format=output)
 
         if result.passed:
@@ -59,16 +71,18 @@ def validate(config_path: Path, strict: bool, output: str, industry: str | None)
             raise SystemExit(0)
 
         click.echo(
-            f"\n❌ Release readiness check FAILED, {result.failed_count} gate(s) not satisfied",
+            "\n❌ Release readiness check FAILED, {} gate(s) not satisfied".format(
+                result.failed_count
+            ),
             err=True,
         )
         raise SystemExit(1)
 
     except ChecklistValidationError as exc:
-        click.echo(f"\n❌ Configuration error: {exc}", err=True)
+        click.echo("\n❌ Configuration error: {}".format(exc), err=True)
         raise SystemExit(2) from exc
     except Exception as exc:  # pragma: no cover - defensive CLI fallback
-        click.echo(f"\n❌ Unexpected error: {exc}", err=True)
+        click.echo("\n❌ Unexpected error: {}".format(exc), err=True)
         raise SystemExit(2) from exc
 
 
@@ -87,14 +101,16 @@ def report(config_path: Path, fmt: str) -> None:
         result = validate_checklist(config_path)
         render_report(result, output_format=fmt, full_report=True)
     except ChecklistValidationError as exc:
-        click.echo(f"\n❌ Configuration error: {exc}", err=True)
+        click.echo("\n❌ Configuration error: {}".format(exc), err=True)
         raise SystemExit(2) from exc
 
 
 @main.command()
 @click.option(
     "--industry",
-    type=click.Choice(["healthcare", "finance", "insurance", "government", "general"]),
+    type=click.Choice(
+        ["healthcare", "finance", "insurance", "government", "general"]
+    ),
     default="general",
     prompt="Target industry",
     help="Industry to optimize the template for.",
@@ -112,8 +128,8 @@ def init(industry: str, output: str) -> None:
     template = get_template(industry)
     output_path = Path(output)
     output_path.write_text(template, encoding="utf-8")
-    click.echo(f"\n✅ Created {output} for {industry} industry.")
-    click.echo(f"   Edit the file and run: release-checklist validate {output}")
+    click.echo("\n✅ Created {} for {} industry.".format(output, industry))
+    click.echo("   Edit the file and run: release-checklist validate {}".format(output))
 
 
 if __name__ == "__main__":
