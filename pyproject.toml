@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "release-checklist"
+version = "0.1.1"
+description = "A CLI tool for validating AI/ML system release readiness in regulated industries"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Sima Bagheri" }
+]
+keywords = [
+    "ai-governance",
+    "release-readiness",
+    "mlops",
+    "responsible-ai",
+    "nist-ai-rmf",
+    "regulated-industries",
+    "machine-learning",
+    "llm-governance",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/simaba/release-checklist"
+Repository = "https://github.com/simaba/release-checklist"
+"Bug Tracker" = "https://github.com/simaba/release-checklist/issues"
+
+[project.scripts]
+release-checklist = "airc.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.0",
+    "flake8>=7.0",
+    "pytest>=8.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
