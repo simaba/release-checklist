@@ -9,7 +9,7 @@ description = "A CLI tool for validating AI/ML system release readiness in regul
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Sima Bagheri", email = "bagherisima@gmail.com" }
+    { name = "Sima Bagheri" }
 ]
 keywords = [
     "ai-governance",
