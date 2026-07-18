@@ -1,46 +1,64 @@
+# Fictional example only. The system, organization, evidence, owners, and dates
+# below are invented. The example demonstrates a coherent hold decision, not a
+# safety or compliance assessment.
+
 metadata:
-  project: "ADAS intervention feature"
-  version: "1.0.0"
-  environment: "pre-production"
-  regulated_industry: "general"
+  project: "Fictional Benefits Document Prioritization System"
+  version: "0.8.0-candidate"
+  environment: "staging"
   risk_classification: "high"
-  deployment_date: null
-  deployment_owner: "Safety + Engineering"
+  domain_context: "public-service-operations"
+  decision_scope: "Offline staff-assistance evaluation only; synthetic documents; no eligibility, denial, payment, or applicant-facing action authority"
+  decision_owner: "Fictional Accountable Executive"
+  evidence_cutoff: "2026-10-20"
 
-model_validation:
-  performance:
-    accuracy_threshold: 0.97
-    bias_evaluation_complete: true
-    adversarial_testing_complete: true
-  fairness:
-    disparate_impact_ratio: 0.85
-    subgroup_performance_review: true
+decision:
+  outcome: "hold"
+  rationale: "The fictional candidate remains on hold because the appeal-routing and subgroup-error evidence is incomplete and the stop procedure has not been demonstrated under load."
+  blockers:
+    - "Appeal and urgent-case routing failures remain unresolved in the current candidate."
+  required_actions:
+    - "Repair routing logic and repeat the locked evaluation suite."
+    - "Demonstrate the stop and queue-recovery procedure under the reviewed load profile."
+  conditions: []
+  evidence_gaps:
+    - "Performance for two low-volume language slices is not estimated with useful precision."
+    - "Independent review of the updated routing policy has not completed."
+  residual_risks:
+    - "Even under staff review, prioritization errors may delay time-sensitive cases."
 
-governance:
-  documentation:
-    model_card_complete: true
-    risk_assessment_complete: true
-    explainability_report_complete: true
-  approvals:
-    technical_review: true
-    ai_governance_review: true
-    legal_review: true
-    security_review: true
-  regulatory: {}
+gates:
+  - id: "SCOPE-001"
+    question: "Is the candidate technically prevented from making eligibility, payment, denial, or applicant-facing decisions?"
+    hard_gate: true
+    status: "pass"
+    evidence:
+      - "evidence/fictional-authority-boundary-test-v2.json"
+    owner: "Fictional Platform Owner"
+    limitation: "The evidence covers the staging candidate and synthetic records only."
 
-infrastructure:
-  testing:
-    unit_tests_passing: true
-    integration_tests_passing: true
-    security_scan_passed: true
-    load_test_passed: true
-  monitoring:
-    alerting_configured: true
-    drift_detection_enabled: true
-  rollback:
-    rollback_plan_documented: true
-    rollback_tested: false
+  - id: "ROUTE-001"
+    question: "Are appeal, urgent, and protected-workflow cases routed according to the reviewed policy?"
+    hard_gate: true
+    status: "fail"
+    evidence:
+      - "evidence/fictional-routing-failure-review.md"
+    owner: "Fictional Product and Policy Owner"
+    limitation: "Three known failure clusters remain open."
 
-incident_readiness:
-  runbook_complete: false
-  escalation_contacts_defined: true
+  - id: "EVAL-001"
+    question: "Does the locked evaluation suite cover the decision-relevant populations and failure modes?"
+    hard_gate: false
+    status: "partial"
+    evidence:
+      - "evidence/fictional-evaluation-report-v7.md"
+    owner: "Fictional Evaluation Owner"
+    limitation: "Two low-volume language slices remain too small for a stable estimate."
+
+  - id: "OPS-001"
+    question: "Can operators stop the candidate, preserve queued work, recover state, and audit the interruption?"
+    hard_gate: true
+    status: "not_tested"
+    evidence: []
+    owner: "Fictional Operations Owner"
+    limitation: "The procedure is documented but has not been exercised under the reviewed load."
