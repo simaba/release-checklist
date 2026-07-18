@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "release-checklist"
-version = "0.1.1"
-description = "A CLI tool for validating AI/ML system release readiness in regulated industries"
+version = "0.2.0"
+description = "A CLI for validating scoped, evidence-based AI release decision records"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -13,11 +13,12 @@ authors = [
 ]
 keywords = [
     "ai-governance",
+    "release-decision",
     "release-readiness",
+    "evidence",
+    "risk-management",
     "mlops",
     "responsible-ai",
-    "nist-ai-rmf",
-    "regulated-industries",
     "machine-learning",
     "llm-governance",
 ]
