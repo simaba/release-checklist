@@ -43,9 +43,21 @@ jobs:
           name: flake8-${{ matrix.python-version }}
           path: flake8-report.txt
           if-no-files-found: ignore
+          retention-days: 7
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: |
+          pytest tests/ -v --tb=short \
+            --junitxml=pytest-results-${{ matrix.python-version }}.xml
+
+      - name: Upload pytest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: pytest-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Validate packaged CLI entrypoint
         run: |
@@ -75,3 +87,4 @@ jobs:
         with:
           name: dist
           path: dist/
+          retention-days: 7
