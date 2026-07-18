@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -69,11 +69,15 @@ class ValidationResult:
         return [gate for gate in self.gates if gate.required]
 
     @property
+    def unresolved_gates(self) -> List[GateResult]:
+        return [gate for gate in self._scope() if not gate.passed]
+
+    @property
     def passed(self) -> bool:
         return (
             self.outcome in {"release", "release_with_conditions"}
             and not self.blockers
-            and all(gate.passed for gate in self._scope())
+            and not self.unresolved_gates
         )
 
     @property
@@ -83,7 +87,7 @@ class ValidationResult:
 
     @property
     def failed_count(self) -> int:
-        return len(self.blockers) + sum(1 for gate in self._scope() if not gate.passed)
+        return len(self.blockers) + len(self.unresolved_gates)
 
     @property
     def passed_count(self) -> int:
@@ -154,7 +158,7 @@ def _load_config(config_path: Path) -> Dict[str, Any]:
 def _validate_metadata(
     metadata: Any,
     domain_override: Optional[str],
-) -> tuple[str, str, str, str, str, str, str]:
+) -> Tuple[str, str, str, str, str, str, str, str]:
     if not isinstance(metadata, dict):
         raise ChecklistValidationError("metadata must be a mapping/object")
 
@@ -188,7 +192,10 @@ def _validate_metadata(
         "metadata.evidence_cutoff",
     )
 
-    declared_domain = metadata.get("domain_context", metadata.get("regulated_industry", "general"))
+    declared_domain = metadata.get(
+        "domain_context",
+        metadata.get("regulated_industry", "general"),
+    )
     domain_context = _ensure_text(
         domain_override if domain_override is not None else declared_domain,
         "metadata.domain_context",
@@ -314,11 +321,14 @@ def validate_checklist(
     if not gates_raw:
         raise ChecklistValidationError("At least one gate is required")
     seen_ids: set[str] = set()
-    gates = [_validate_gate(gate, index, seen_ids) for index, gate in enumerate(gates_raw)]
+    gates = [
+        _validate_gate(gate, index, seen_ids)
+        for index, gate in enumerate(gates_raw)
+    ]
 
-    unresolved_hard = [gate.gate for gate in gates if gate.required and not gate.passed]
-    decision_blockers = list(blockers)
-    decision_blockers.extend(f"unresolved hard gate: {gate_id}" for gate_id in unresolved_hard)
+    unresolved_hard = [
+        gate.gate for gate in gates if gate.required and not gate.passed
+    ]
 
     if outcome == "release" and (required_actions or conditions):
         raise ChecklistValidationError(
@@ -330,7 +340,7 @@ def validate_checklist(
         )
     if outcome == "defer" and not evidence_gaps:
         raise ChecklistValidationError("defer requires at least one evidence gap")
-    if outcome == "do_not_release" and not decision_blockers:
+    if outcome == "do_not_release" and not (blockers or unresolved_hard):
         raise ChecklistValidationError(
             "do_not_release requires a blocker or unresolved hard gate"
         )
@@ -348,7 +358,7 @@ def validate_checklist(
         decision_owner=decision_owner,
         evidence_cutoff=evidence_cutoff,
         rationale=rationale,
-        blockers=decision_blockers,
+        blockers=blockers,
         required_actions=required_actions,
         conditions=conditions,
         evidence_gaps=evidence_gaps,
