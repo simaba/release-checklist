@@ -1,46 +1,66 @@
+# Fictional example only. Northstar Library, its systems, people, evidence,
+# quantities, and dates are invented for this repository.
+
 metadata:
-  project: "IVI assistant"
-  version: "1.0.0"
+  project: "Northstar Catalog Drafting Pilot"
+  version: "0.4.0-pilot"
   environment: "staging"
-  regulated_industry: "general"
   risk_classification: "medium"
-  deployment_date: null
-  deployment_owner: "Product + Platform"
+  domain_context: "library-operations"
+  decision_scope: "40 trained internal staff; public catalog records; read and draft tools only; no publication, deletion, patron data, or external messaging"
+  decision_owner: "Fictional Pilot Sponsor"
+  evidence_cutoff: "2026-10-15"
 
-model_validation:
-  performance:
-    accuracy_threshold: 0.92
-    bias_evaluation_complete: true
-    adversarial_testing_complete: false
-  fairness:
-    disparate_impact_ratio: 0.84
-    subgroup_performance_review: true
+decision:
+  outcome: "release_with_conditions"
+  rationale: "The cited fictional evidence supports a small read-and-draft pilot. Broader use is not supported because the rare-record slice remains based on a limited sample."
+  blockers: []
+  required_actions:
+    - "Complete a stratified review of 150 rare-record drafts before any population expansion."
+  conditions:
+    - "Keep all connected tools read-only and require staff confirmation outside the assistant before any source record is changed."
+    - "Limit the pilot to 40 trained staff and public catalog records through 2026-12-15."
+    - "Pause after any confirmed restricted-record retrieval or unauthorized tool attempt."
+  evidence_gaps:
+    - "Rare handwritten-record cases remain underrepresented in the current fictional evaluation set."
+  residual_risks:
+    - "Staff may over-trust fluent draft explanations despite source links and training."
 
-governance:
-  documentation:
-    model_card_complete: false
-    risk_assessment_complete: true
-    explainability_report_complete: false
-  approvals:
-    technical_review: true
-    ai_governance_review: false
-    legal_review: false
-    security_review: false
-  regulatory: {}
+gates:
+  - id: "SCOPE-001"
+    question: "Is the population, data, tool, permission, and environment scope explicit and versioned?"
+    hard_gate: true
+    status: "pass"
+    evidence:
+      - "evidence/fictional-pilot-scope-v4.md"
+      - "evidence/fictional-data-flow-v3.md"
+    owner: "Fictional Product Owner"
+    limitation: "Applies only to the staging pilot configuration described in the decision scope."
 
-infrastructure:
-  testing:
-    unit_tests_passing: true
-    integration_tests_passing: true
-    security_scan_passed: false
-    load_test_passed: true
-  monitoring:
-    alerting_configured: true
-    drift_detection_enabled: true
-  rollback:
-    rollback_plan_documented: true
-    rollback_tested: false
+  - id: "AUTH-001"
+    question: "Are write, publish, delete, and external-message actions unavailable to the reviewed configuration?"
+    hard_gate: true
+    status: "pass"
+    evidence:
+      - "evidence/fictional-permission-test-2026-10-10.json"
+    owner: "Fictional Platform Owner"
+    limitation: "Manual source-system changes occur outside this assistant and are a separate workflow."
 
-incident_readiness:
-  runbook_complete: false
-  escalation_contacts_defined: true
+  - id: "EVAL-001"
+    question: "Does the evaluation evidence support the bounded pilot and disclose coverage limitations?"
+    hard_gate: false
+    status: "partial"
+    evidence:
+      - "evidence/fictional-evaluation-report-v6.md"
+    owner: "Fictional Evaluation Owner"
+    limitation: "Core catalog journeys are covered; the rare-record slice needs a larger confirmatory sample."
+
+  - id: "OPS-001"
+    question: "Can the pilot be monitored, stopped, contained, and recovered within the reviewed scope?"
+    hard_gate: true
+    status: "pass"
+    evidence:
+      - "evidence/fictional-stop-exercise.md"
+      - "evidence/fictional-support-runbook-v2.md"
+    owner: "Fictional Operations Owner"
+    limitation: "The exercise covered the internal staging pilot only."
