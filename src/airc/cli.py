@@ -14,18 +14,11 @@ from airc.validator import ChecklistValidationError, validate_checklist
 @click.group()
 @click.version_option()
 def main() -> None:
-    """release-checklist, a validator for AI release readiness.
+    """Validate scoped AI release-decision records.
 
-    Validate YAML-based release readiness configurations for AI/ML systems
-    before deploying to regulated production environments.
-
-    Aligned with NIST AI RMF (AI RMF 1.0) Measure function.
-
-    Examples:
-        release-checklist validate release-checklist.yaml
-        release-checklist validate release-checklist.yaml --strict
-        release-checklist report release-checklist.yaml --format markdown
-        release-checklist init --industry healthcare
+    The CLI checks YAML structure, evidence references, hard-gate state, and
+    selected decision coherence. It does not certify safety, compliance, or
+    production readiness.
     """
 
 
@@ -35,7 +28,7 @@ def main() -> None:
     "--strict",
     is_flag=True,
     default=False,
-    help="Fail if declared optional gates are not explicitly satisfied.",
+    help="Require every declared supporting gate, not only hard gates, to pass.",
 )
 @click.option(
     "--output",
@@ -44,45 +37,49 @@ def main() -> None:
     help="Output format (default: text).",
 )
 @click.option(
+    "--domain",
     "--industry",
-    type=click.Choice(
-        ["healthcare", "finance", "insurance", "government", "general"]
-    ),
+    "domain_context",
     default=None,
-    help="Override industry-specific gate requirements.",
+    help=(
+        "Override descriptive domain context. The legacy --industry alias is "
+        "retained, but no domain-specific gates are injected."
+    ),
 )
 def validate(
     config_path: Path,
     strict: bool,
     output: str,
-    industry: Optional[str],
+    domain_context: Optional[str],
 ) -> None:
-    """Validate a release readiness configuration file."""
+    """Validate a release-decision configuration file."""
     try:
         result = validate_checklist(
             config_path,
             strict=strict,
-            industry_override=industry,
+            industry_override=domain_context,
         )
         render_report(result, output_format=output)
 
         if result.passed:
-            click.echo("\n✅ Release readiness check PASSED", err=True)
+            click.echo(
+                f"\n✅ Decision record supports outcome: {result.outcome}",
+                err=True,
+            )
             raise SystemExit(0)
 
         click.echo(
-            "\n❌ Release readiness check FAILED, {} gate(s) not satisfied".format(
-                result.failed_count
-            ),
+            f"\n❌ Decision record does not support release; outcome={result.outcome}, "
+            f"unresolved={result.failed_count}",
             err=True,
         )
         raise SystemExit(1)
 
     except ChecklistValidationError as exc:
-        click.echo("\n❌ Configuration error: {}".format(exc), err=True)
+        click.echo(f"\n❌ Configuration error: {exc}", err=True)
         raise SystemExit(2) from exc
     except Exception as exc:  # pragma: no cover - defensive CLI fallback
-        click.echo("\n❌ Unexpected error: {}".format(exc), err=True)
+        click.echo(f"\n❌ Unexpected error: {exc}", err=True)
         raise SystemExit(2) from exc
 
 
@@ -95,25 +92,33 @@ def validate(
     default="markdown",
     help="Report output format (default: markdown).",
 )
-def report(config_path: Path, fmt: str) -> None:
-    """Generate a release readiness report from a configuration file."""
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Include every supporting gate in the decision status.",
+)
+def report(config_path: Path, fmt: str, strict: bool) -> None:
+    """Generate a detailed report from a release-decision record."""
     try:
-        result = validate_checklist(config_path)
+        result = validate_checklist(config_path, strict=strict)
         render_report(result, output_format=fmt, full_report=True)
     except ChecklistValidationError as exc:
-        click.echo("\n❌ Configuration error: {}".format(exc), err=True)
+        click.echo(f"\n❌ Configuration error: {exc}", err=True)
         raise SystemExit(2) from exc
 
 
 @main.command()
 @click.option(
+    "--domain",
     "--industry",
-    type=click.Choice(
-        ["healthcare", "finance", "insurance", "government", "general"]
-    ),
+    "domain_context",
     default="general",
-    prompt="Target industry",
-    help="Industry to optimize the template for.",
+    prompt="Domain context",
+    help=(
+        "Descriptive domain label for the generated template. The legacy "
+        "--industry alias remains supported."
+    ),
 )
 @click.option(
     "--output",
@@ -121,15 +126,15 @@ def report(config_path: Path, fmt: str) -> None:
     default="release-checklist.yaml",
     help="Output filename (default: release-checklist.yaml).",
 )
-def init(industry: str, output: str) -> None:
-    """Generate a new release checklist configuration template."""
+def init(domain_context: str, output: str) -> None:
+    """Generate a domain-labelled, evidence-based decision template."""
     from airc.templates import get_template
 
-    template = get_template(industry)
+    template = get_template(domain_context)
     output_path = Path(output)
     output_path.write_text(template, encoding="utf-8")
-    click.echo("\n✅ Created {} for {} industry.".format(output, industry))
-    click.echo("   Edit the file and run: release-checklist validate {}".format(output))
+    click.echo(f"\n✅ Created {output} with domain context '{domain_context}'.")
+    click.echo(f"   Replace placeholders, then run: release-checklist validate {output}")
 
 
 if __name__ == "__main__":
