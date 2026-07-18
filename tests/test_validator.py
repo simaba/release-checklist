@@ -165,8 +165,9 @@ def test_unresolved_hard_gate_blocks_release_result(config_file):
     result = validate_checklist(config_file(bad))
 
     assert result.passed is False
-    assert "unresolved hard gate: AUTH-001" in result.blockers
-    assert result.failed_count >= 2  # one unresolved gate plus its blocker record
+    assert result.blockers == []
+    assert [gate.gate for gate in result.unresolved_gates] == ["AUTH-001"]
+    assert result.failed_count == 1
 
 
 def test_release_cannot_hide_conditions(config_file):
@@ -221,7 +222,8 @@ def test_hold_is_valid_but_not_a_supported_release(config_file):
     assert result.configuration_valid is True
     assert result.outcome == "hold"
     assert result.passed is False
-    assert result.blockers
+    assert result.blockers == ["Known routing failure remains open."]
+    assert [gate.gate for gate in result.unresolved_gates] == ["AUTH-001"]
 
 
 def test_strict_mode_includes_supporting_gate(config_file):
