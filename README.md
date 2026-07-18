@@ -1,59 +1,39 @@
-# AI Release Readiness Checklist
+# AI Release Decision Validator
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/simaba/release-checklist)](https://github.com/simaba/release-checklist/commits/main)
 
-A practical, risk-tiered checklist framework for evaluating AI release readiness, with a packaged CLI validator for local use and CI pipelines.
+A packaged CLI for validating the **structure and internal coherence of a bounded AI release-decision record**.
 
-## Choose this repo when
+The tool does not decide which controls a healthcare, financial, automotive, public-sector, or other system requires. It requires the team to declare its own decision-relevant propositions, mark non-compensable hard gates, cite evidence, disclose limitations, and record the resulting outcome.
 
-Use this repository when you need a **working validator** for YAML-based release-readiness configurations.
+## Why this model
 
-This repo is intentionally narrower than:
+A generic checklist can create false assurance:
 
-- [`release-governance`](https://github.com/simaba/release-governance), which explains the broader release lifecycle and gate model
-- [`governance-playbook`](https://github.com/simaba/governance-playbook), which covers the wider AI operating model
-- [`regulated-ai`](https://github.com/simaba/regulated-ai), which is a starter template repo
+- “bias evaluation complete” does not identify the population, metric, method, or result;
+- “legal approved” does not explain the decision scope or applicable question;
+- one universal accuracy threshold is not meaningful across tasks;
+- an industry label cannot safely inject the right obligations;
+- a weighted score should not override a failed authorization or safety boundary.
 
-## Maturity
+This validator therefore checks a narrower contract: **is the supplied release record identifiable, evidence-bearing, and logically consistent with its stated outcome?**
 
-This is an **alpha working tool**. It is useful for demos, internal experiments, governance prototyping, and CI-style validation of example release-readiness files. It is not a full policy engine, compliance product, or safety certification tool.
+## What the CLI validates
 
-## What this repository provides
+- required metadata, including decision scope, owner, version, and evidence cutoff;
+- semantic-version and ISO-date formatting;
+- recursive placeholder removal;
+- unique gate identifiers and valid gate statuses;
+- evidence references for `pass` and `not_applicable` gates;
+- scoped rationale for `not_applicable`;
+- separation of hard gates from supporting gates;
+- decision semantics for `release`, `release_with_conditions`, `hold`, `do_not_release`, and `defer`;
+- blockers, conditions, required actions, evidence gaps, and residual risks;
+- text, Markdown, and JSON reporting.
 
-- a packaged `release-checklist` CLI for validating YAML-based release gate configurations
-- starter templates generated with `release-checklist init`
-- example configurations for medium-risk and high-risk AI systems
-- typed validation for known metadata fields, boolean gates, bounded numeric values, and expected mapping shapes
-- text, JSON, and Markdown reporting for local use and CI pipelines
-- GitHub Actions CI covering supported Python versions and packaged CLI behavior
-
-## Naming note
-
-The command-line tool is installed as `release-checklist`. The Python package namespace is currently `airc`, short for **AI Release Checklist**. This keeps the CLI name readable while keeping the internal package namespace concise.
-
-## How it works
-
-Three risk tiers are supported, chosen based on safety impact, regulatory exposure, and reversibility:
-
-| Tier | Use when |
-|---|---|
-| **Low risk** | Internal tools, no safety impact, easily reversible |
-| **Medium risk** | Customer-facing, some regulatory context, limited fallback |
-| **High risk** | Safety-critical, regulated environment, hard to reverse |
-
-Higher tiers inherit the required gates from lower tiers and add stricter requirements.
-
-The validator expects a nested YAML structure with these top-level sections:
-
-- `metadata`
-- `model_validation`
-- `governance`
-- `infrastructure`
-- optional but supported: `incident_readiness`
-
-Known nested sections such as `model_validation.performance`, `governance.approvals`, and `infrastructure.testing` are expected to be mappings rather than free-form lists or strings.
+It does **not** authenticate evidence, determine legal applicability, decide whether a gate is appropriate, accept residual risk, or certify safety/compliance.
 
 ## Quick start
 
@@ -61,115 +41,142 @@ Known nested sections such as `model_validation.performance`, `governance.approv
 git clone https://github.com/simaba/release-checklist.git
 cd release-checklist
 python -m pip install -e .
-```
 
-Validate a working example configuration:
-
-```bash
 release-checklist validate configs/medium-risk-example.yaml
-```
-
-Generate a report:
-
-```bash
 release-checklist report configs/medium-risk-example.yaml --format markdown
 ```
 
-Create a starter template:
+The medium example is a fictional conditional pilot that returns exit code `0`. The high-risk example is a fictional coherent `hold` decision and therefore returns exit code `1` from `validate`, while `report` still renders the full record.
+
+```bash
+release-checklist report configs/high-risk-example.yaml --format markdown
+```
+
+## Configuration contract
+
+```yaml
+metadata:
+  project: "Fictional Assistant"
+  version: "1.0.0-pilot"
+  environment: "staging"
+  risk_classification: "medium"
+  domain_context: "library-operations"
+  decision_scope: "20 trained staff; public records; read and draft tools only"
+  decision_owner: "Fictional Sponsor"
+  evidence_cutoff: "2026-10-15"
+
+decision:
+  outcome: "release_with_conditions"
+  rationale: "The evidence supports only the bounded pilot."
+  blockers: []
+  required_actions:
+    - "Complete a larger rare-record sample before expansion."
+  conditions:
+    - "Keep all tools read-only."
+  evidence_gaps:
+    - "Rare-record coverage remains limited."
+  residual_risks:
+    - "Users may over-trust fluent drafts."
+
+gates:
+  - id: "AUTH-001"
+    question: "Is write authority disabled for the reviewed scope?"
+    hard_gate: true
+    status: "pass"
+    evidence:
+      - "evidence/fictional-authority-test.json"
+    owner: "Fictional Platform Owner"
+    limitation: "Pilot configuration only."
+```
+
+Gate status values:
+
+- `pass`
+- `fail`
+- `partial`
+- `not_tested`
+- `not_applicable`
+
+A hard gate is non-compensable for the declared scope. `pass` and `not_applicable` must cite evidence; `not_applicable` also needs a scoped rationale.
+
+## Decision outcomes
+
+| Outcome | Validator interpretation |
+|---|---|
+| `release` | No declared blockers, no unresolved hard gates, and no accepted conditions or required actions |
+| `release_with_conditions` | No declared blockers or unresolved hard gates; at least one condition or required action |
+| `hold` | Valid record, but the current state does not authorize release |
+| `do_not_release` | Requires a declared blocker or unresolved hard gate |
+| `defer` | Requires at least one evidence gap explaining why a decision cannot yet be made |
+
+The `validate` command returns exit code `0` only for supported `release` or `release_with_conditions` outcomes. It returns `1` for coherent hold/defer/do-not-release records and for release outcomes blocked by hard gates. Invalid configuration returns `2`.
+
+## Strict mode
+
+By default, only hard gates determine whether a release outcome is supported. Supporting gates remain visible in reports but may be `partial` without blocking the bounded decision.
+
+```bash
+release-checklist validate configs/medium-risk-example.yaml --strict
+```
+
+Strict mode requires every declared supporting gate to be `pass` or `not_applicable`. It is a review convenience, not a universal policy recommendation.
+
+## Template generation
+
+```bash
+release-checklist init --domain healthcare -o release-decision.yaml
+```
+
+`--industry` remains as a backward-compatible alias:
 
 ```bash
 release-checklist init --industry healthcare
 ```
 
-Legacy direct execution is still supported for local source checkouts:
+The label is descriptive context only. It does **not** inject HIPAA, SR 11-7, legal-review, fairness, security, or other gates. Derive propositions from the actual system, authority, harm model, policy, and qualified review.
 
-```bash
-python src/check_release.py validate configs/medium-risk-example.yaml
+## Python API compatibility
+
+The internal package namespace remains `airc`. Existing callers can continue using:
+
+```python
+from airc.validator import validate_checklist
+
+result = validate_checklist(path, industry_override="healthcare")
 ```
 
-Install development dependencies:
-
-```bash
-python -m pip install -e ".[dev]"
-```
-
-## Example configuration shape
-
-```yaml
-metadata:
-  project: "IVI assistant"
-  version: "1.0.0"
-  environment: "staging"
-  regulated_industry: "general"
-  risk_classification: "medium"
-
-model_validation:
-  performance:
-    accuracy_threshold: 0.90
-    bias_evaluation_complete: true
-
-governance:
-  documentation:
-    risk_assessment_complete: true
-  approvals:
-    technical_review: true
-
-infrastructure:
-  testing:
-    unit_tests_passing: true
-  rollback:
-    rollback_plan_documented: true
-```
-
-## Validation behavior
-
-The validator currently enforces:
-
-- required top-level sections
-- required metadata fields
-- allow-listed values for environment, industry, and risk tier
-- semver-like version formatting such as `1.0.0`
-- mapping/object shape checks for known structural sections
-- boolean typing for known gates
-- bounded numeric validation for known fields such as `accuracy_threshold`
-- positive numeric validation for known monitoring fields such as `latency_ms`
-
-This repository is meant to be useful in real workflows, but it is still a lightweight validator rather than a full policy engine.
-
-## Scope and disclaimer
-
-This repository is shared in a personal capacity. It is not legal advice, compliance certification, regulatory approval, safety certification, or official guidance from NIST, the EU, ISO, or any employer.
-
-References to risk tiers, release gates, NIST AI RMF, EU AI Act, or industry obligations are practitioner mappings and examples. Always verify against official sources before using this tool for compliance, safety, or release decisions.
+`industry_override` now changes only the reported domain context. The compatibility field `result.regulated_industry` remains available; `result.domain_context` is the preferred name.
 
 ## Repository structure
 
 ```text
-configs/
-  medium-risk-example.yaml
-  high-risk-example.yaml
-src/
-  airc/
-    cli.py
-    validator.py
-    report.py
-    templates.py
-  check_release.py
-tests/
-  test_validator.py
-requirements.txt
-pyproject.toml
-.github/workflows/ci.yml
+configs/                 fictional decision examples
+src/airc/validator.py    structure and decision semantics
+src/airc/report.py       text, Markdown, and JSON rendering
+src/airc/templates.py    domain-neutral starter template
+src/airc/cli.py          packaged command-line interface
+tests/                   decision-contract tests
+.github/workflows/ci.yml Python matrix, CLI smoke tests, package build
 ```
+
+## Scope
+
+This is an alpha governance utility. Schema and decision coherence are useful controls, but they do not establish that:
+
+- evidence is authentic, current, representative, or sufficient;
+- a gate is legally or technically appropriate;
+- a condition is enforceable;
+- the named owner has valid authority;
+- a release is safe, compliant, production-ready, or valuable.
+
+Use qualified engineering, safety, security, privacy, legal, compliance, operations, accessibility, and domain review where the real system requires it.
 
 ## Related repositories
 
-| Repository | What it adds |
-|---|---|
-| [release-governance](https://github.com/simaba/release-governance) | Broader framework this checklist operationalizes |
-| [governance-playbook](https://github.com/simaba/governance-playbook) | End-to-end operating model |
-| [regulated-ai](https://github.com/simaba/regulated-ai) | Starter template repo with governance artifacts |
+- [`release-governance`](https://github.com/simaba/release-governance) — release lifecycle and decision-record methodology.
+- [`governance-playbook`](https://github.com/simaba/governance-playbook) — wider organizational decision and evidence service.
+- [`regulated-ai`](https://github.com/simaba/regulated-ai) — starter repository with a compatible evidence-based decision example.
 
 ---
 
-*Shared in a personal capacity. Open to collaborations and feedback via [LinkedIn](https://linkedin.com/in/simaba) or [Medium](https://medium.com/@bagheri.sima).*
+*Maintained by [Sima Bagheri](https://github.com/simaba).*
